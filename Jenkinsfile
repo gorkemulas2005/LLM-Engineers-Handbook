@@ -2,17 +2,20 @@ pipeline {
     agent any
 
     environment {
-        MLFLOW_RUN_NAME = "jenkins_build_${BUILD_NUMBER}"
+        // Python & proje dizini
+        PROJECT_DIR = "C:\\Users\\gorke\\LLM-Engineers-Handbook"
+        POETRY_EXE  = "C:\\Users\\gorke\\AppData\\Roaming\\Python\\Scripts\\poetry.exe"
     }
 
     stages {
+
         stage('Setup Poetry Env') {
             steps {
                 bat '''
                 echo Setting up Poetry environment...
-                cd C:\\Users\\gorke\\LLM-Engineers-Handbook
-                poetry env use 3.11
-                poetry install
+                cd %PROJECT_DIR%
+                "%POETRY_EXE%" env use 3.11
+                "%POETRY_EXE%" install
                 '''
             }
         }
@@ -21,9 +24,8 @@ pipeline {
             steps {
                 bat '''
                 echo Starting Docker containers...
-                cd C:\\Users\\gorke\\LLM-Engineers-Handbook
+                cd %PROJECT_DIR%
                 docker compose up -d
-                timeout /t 15
                 '''
             }
         }
@@ -31,9 +33,9 @@ pipeline {
         stage('Run ZenML Pipeline') {
             steps {
                 bat '''
-                echo Running Fatih Terim RAG pipeline...
-                cd C:\\Users\\gorke\\LLM-Engineers-Handbook
-                poetry run python pipelines/fatih_terim_pipeline.py
+                echo Running Fatih Terim Pipeline via ZenML...
+                cd %PROJECT_DIR%
+                "%POETRY_EXE%" run python pipelines/fatih_terim_pipeline.py
                 '''
             }
         }
@@ -41,9 +43,9 @@ pipeline {
         stage('Track with MLflow') {
             steps {
                 bat '''
-                echo Launching MLflow UI...
-                cd C:\\Users\\gorke\\LLM-Engineers-Handbook
-                poetry run mlflow ui --port 5000
+                echo Opening MLflow UI on port 5000...
+                cd %PROJECT_DIR%
+                start "" "%POETRY_EXE%" run mlflow ui --port 5000
                 '''
             }
         }
@@ -53,7 +55,7 @@ pipeline {
         always {
             bat '''
             echo Shutting down Docker containers...
-            cd C:\\Users\\gorke\\LLM-Engineers-Handbook
+            cd %PROJECT_DIR%
             docker compose down
             '''
         }
