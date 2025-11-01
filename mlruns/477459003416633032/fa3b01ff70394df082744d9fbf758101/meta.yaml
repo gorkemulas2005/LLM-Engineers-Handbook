@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/gorke/LLM-Engineers-Handbook/mlruns/477459003416633032/fa3b01ff70394df082744d9fbf758101/artifacts
+end_time: 1762007488233
+entry_point_name: ''
+experiment_id: '477459003416633032'
+lifecycle_stage: active
+run_id: fa3b01ff70394df082744d9fbf758101
+run_name: fatih_terim_rag
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1762007488071
+status: 3
+tags: []
+user_id: gorke

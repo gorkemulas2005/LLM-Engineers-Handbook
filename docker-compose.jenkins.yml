@@ -1,0 +1,56 @@
+﻿version: '3.8'
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: llm_jenkins
+    user: root
+    privileged: true
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      # setup wizard aktif
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
+      # timeout ve plugin install sorunlarını önlemek için
+      - JENKINS_UC_DOWNLOAD=http://updates.jenkins.io
+      - JENKINS_UC_EXPERIMENTAL=http://updates.jenkins.io/experimental
+      - JENKINS_UC=http://updates.jenkins.io
+      - JENKINS_INCREMENTALS_REPO_MIRROR=http://repo.jenkins-ci.org/incrementals/
+      - JENKINS_PLUGIN_MANAGER_TIMEOUT=600
+      - JENKINS_SLAVE_AGENT_PORT=50000
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../llm-engineering:/var/jenkins_home/workspace/llm-engineering
+    depends_on:
+      - mlflow
+    networks:
+      - mlops-network
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.15.1
+    container_name: mlflow-ui
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root file:///mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+    networks:
+      - mlops-network
+
+volumes:
+  jenkins_data:
+  mlflow_data:
+
+networks:
+  mlops-network:
+    driver: bridge
