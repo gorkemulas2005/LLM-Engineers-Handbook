@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // Python & proje dizini
         PROJECT_DIR = "C:\\Users\\gorke\\LLM-Engineers-Handbook"
         POETRY_EXE  = "C:\\Users\\gorke\\AppData\\Roaming\\Python\\Scripts\\poetry.exe"
     }
@@ -12,10 +11,18 @@ pipeline {
         stage('Setup Poetry Env') {
             steps {
                 bat '''
-                echo Setting up Poetry environment...
+                echo 🔧 Checking Poetry environment...
                 cd %PROJECT_DIR%
-                "%POETRY_EXE%" env use 3.11
-                "%POETRY_EXE%" install
+
+                rem Poetry 3.11 ortamı var mı kontrol et
+                "%POETRY_EXE%" env list | find "3.11" >nul
+                if %errorlevel% neq 0 (
+                    echo ⚙️ Poetry environment not found. Creating new one...
+                    "%POETRY_EXE%" env use 3.11
+                    "%POETRY_EXE%" install
+                ) else (
+                    echo ✅ Poetry environment already exists. Skipping installation.
+                )
                 '''
             }
         }
@@ -23,7 +30,7 @@ pipeline {
         stage('Start Docker') {
             steps {
                 bat '''
-                echo Starting Docker containers...
+                echo 🐳 Starting Docker containers...
                 cd %PROJECT_DIR%
                 docker compose up -d
                 '''
@@ -33,7 +40,7 @@ pipeline {
         stage('Run ZenML Pipeline') {
             steps {
                 bat '''
-                echo Running Fatih Terim Pipeline via ZenML...
+                echo 🚀 Running Fatih Terim ZenML Pipeline...
                 cd %PROJECT_DIR%
                 "%POETRY_EXE%" run python pipelines/fatih_terim_pipeline.py
                 '''
@@ -43,7 +50,7 @@ pipeline {
         stage('Track with MLflow') {
             steps {
                 bat '''
-                echo Opening MLflow UI on port 5000...
+                echo 📊 Starting MLflow UI on port 5000...
                 cd %PROJECT_DIR%
                 start "" "%POETRY_EXE%" run mlflow ui --port 5000
                 '''
@@ -54,7 +61,7 @@ pipeline {
     post {
         always {
             bat '''
-            echo Shutting down Docker containers...
+            echo 🧹 Shutting down Docker containers...
             cd %PROJECT_DIR%
             docker compose down
             '''
