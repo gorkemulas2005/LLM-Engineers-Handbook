@@ -62,7 +62,6 @@ PY
 
       - name: Run pipeline (test mode)
         env:
-          # .env bekliyorsa override et
           MONGO_URI: "mongodb://localhost:27017"
           QDRANT_URL: "http://localhost:6333"
         run: python pipelines/fatih_terim_pipeline.py
