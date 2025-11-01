@@ -14,7 +14,7 @@ pipeline {
                 echo Checking Poetry environment...
                 cd %PROJECT_DIR%
 
-                "%POETRY_EXE%" env list | find "3.11" >nul
+                "%POETRY_EXE%" env list | find "3.11" >nul 2>&1
                 if %errorlevel% neq 0 (
                     echo Environment not found. Creating new one...
                     "%POETRY_EXE%" env use 3.11
@@ -29,6 +29,7 @@ pipeline {
                         echo ZenML found, skipping install.
                     )
                 )
+                exit /b 0
                 '''
             }
         }
@@ -39,6 +40,7 @@ pipeline {
                 echo Starting Docker containers...
                 cd %PROJECT_DIR%
                 docker compose up -d
+                exit /b 0
                 '''
             }
         }
@@ -49,6 +51,7 @@ pipeline {
                 echo Running Fatih Terim ZenML Pipeline...
                 cd %PROJECT_DIR%
                 "%POETRY_EXE%" run python pipelines/fatih_terim_pipeline.py
+                exit /b 0
                 '''
             }
         }
@@ -59,6 +62,7 @@ pipeline {
                 echo Starting MLflow UI on port 5000...
                 cd %PROJECT_DIR%
                 start "" "%POETRY_EXE%" run mlflow ui --port 5000
+                exit /b 0
                 '''
             }
         }
@@ -70,6 +74,7 @@ pipeline {
             echo Shutting down Docker containers...
             cd %PROJECT_DIR%
             docker compose down
+            exit /b 0
             '''
         }
     }
