@@ -1,81 +1,66 @@
 pipeline {
-    agent any
+  agent any
 
-    environment {
-        PROJECT_DIR = "C:\\Users\\gorke\\LLM-Engineers-Handbook"
-        POETRY_EXE  = "C:\\Users\\gorke\\AppData\\Roaming\\Python\\Scripts\\poetry.exe"
+  environment {
+    POETRY = 'C:\\Users\\gorke\\AppData\\Roaming\\Python\\Scripts\\poetry.exe'
+    PY311  = 'C:\\Program Files\\Python311\\python.exe'
+    PROJ   = 'C:\\Users\\gorke\\LLM-Engineers-Handbook'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
     }
 
-    stages {
-
-        stage('Setup Poetry Env') {
-            steps {
-                bat '''
-                echo Checking Poetry environment...
-                cd %PROJECT_DIR%
-
-                "%POETRY_EXE%" env list | find "3.11" >nul 2>&1
-                if %errorlevel% neq 0 (
-                    echo Environment not found. Creating new one...
-                    "%POETRY_EXE%" env use 3.11
-                    "%POETRY_EXE%" install
-                ) else (
-                    echo Environment exists. Checking ZenML installation...
-                    "%POETRY_EXE%" run python -c "import zenml" 2>nul
-                    if %errorlevel% neq 0 (
-                        echo ZenML missing, reinstalling dependencies...
-                        "%POETRY_EXE%" install
-                    ) else (
-                        echo ZenML found, skipping install.
-                    )
-                )
-                exit /b 0
-                '''
-            }
-        }
-
-        stage('Start Docker') {
-            steps {
-                bat '''
-                echo Starting Docker containers...
-                cd %PROJECT_DIR%
-                docker compose up -d
-                exit /b 0
-                '''
-            }
-        }
-
-        stage('Run ZenML Pipeline') {
-            steps {
-                bat '''
-                echo Running Fatih Terim ZenML Pipeline...
-                cd %PROJECT_DIR%
-                "%POETRY_EXE%" run python pipelines/fatih_terim_pipeline.py
-                exit /b 0
-                '''
-            }
-        }
-
-        stage('Track with MLflow') {
-            steps {
-                bat '''
-                echo Starting MLflow UI on port 5000...
-                cd %PROJECT_DIR%
-                start "" "%POETRY_EXE%" run mlflow ui --port 5000
-                exit /b 0
-                '''
-            }
-        }
+    stage('Poetry Setup') {
+      steps {
+        bat '''
+        cd "%PROJ%"
+        echo === Ensure Poetry points to Python 3.11 ===
+        "%POETRY%" env use "%PY311%"
+        echo === Install project deps (idempotent) ===
+        "%POETRY%" install --no-interaction --no-ansi
+        echo === Sanity check: all imports ===
+        "%POETRY%" run python -c "import zenml, mlflow, pymongo, qdrant_client, sentence_transformers; print('OK_IMPORTS')"
+        '''
+      }
     }
 
-    post {
-        always {
-            bat '''
-            echo Shutting down Docker containers...
-            cd %PROJECT_DIR%
-            docker compose down
-            exit /b 0
-            '''
-        }
+    stage('Start Docker') {
+      steps {
+        bat '''
+        cd "%PROJ%"
+        docker compose up -d
+        '''
+      }
     }
+
+    stage('Run ZenML Pipeline') {
+      steps {
+        bat '''
+        cd "%PROJ%"
+        "%POETRY%" run python -m pipelines.fatih_terim_pipeline
+        '''
+      }
+    }
+
+    stage('Track with MLflow (optional)') {
+      when { expression { return false } } // istersen true yap
+      steps {
+        bat '''
+        cd "%PROJ%"
+        start "" "%POETRY%" run mlflow ui --port 5000
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      bat '''
+      cd "%PROJ%"
+      docker compose down
+      '''
+    }
+  }
 }
