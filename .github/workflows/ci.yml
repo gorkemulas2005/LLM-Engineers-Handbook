@@ -1,0 +1,76 @@
+name: CI - Fatih Terim Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:5.0
+        ports: [ "27017:27017" ]
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      qdrant:
+        image: qdrant/qdrant:v1.6.1
+        ports: [ "6333:6333" ]
+        options: >-
+          --health-cmd "wget -qO- http://localhost:6333/cluster | grep -q status"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry 2.2.1
+        run: pip install "poetry==2.2.1"
+
+      - name: Configure Poetry (no venv creation)
+        run: poetry config virtualenvs.create false
+
+      - name: Install deps
+        run: poetry install --no-interaction --no-root
+
+      - name: Wait services
+        run: |
+          echo "Waiting for Mongo & Qdrant..."
+          python - << 'PY'
+import time, socket
+def wait(host, port, name, timeout=60):
+    t = time.time()
+    while time.time() - t < timeout:
+        try:
+            with socket.create_connection((host, port), timeout=2): 
+                print(f"{name} OK")
+                return
+        except OSError:
+            time.sleep(1)
+    raise SystemExit(f"{name} NOT READY")
+wait("localhost",27017,"MongoDB")
+wait("localhost",6333,"Qdrant")
+PY
+
+      - name: Run pipeline (test mode)
+        env:
+          # .env bekliyorsa override et
+          MONGO_URI: "mongodb://localhost:27017"
+          QDRANT_URL: "http://localhost:6333"
+        run: python pipelines/fatih_terim_pipeline.py
+
+      - name: Upload mlruns as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlruns
+          path: mlruns
+          if-no-files-found: ignore
