@@ -14,14 +14,20 @@ pipeline {
                 echo 🔧 Checking Poetry environment...
                 cd %PROJECT_DIR%
 
-                rem Poetry 3.11 ortamı var mı kontrol et
                 "%POETRY_EXE%" env list | find "3.11" >nul
                 if %errorlevel% neq 0 (
-                    echo ⚙️ Poetry environment not found. Creating new one...
+                    echo ⚙️ Environment not found. Creating new one...
                     "%POETRY_EXE%" env use 3.11
                     "%POETRY_EXE%" install
                 ) else (
-                    echo ✅ Poetry environment already exists. Skipping installation.
+                    echo ✅ Environment exists. Checking ZenML installation...
+                    "%POETRY_EXE%" run python -c "import zenml" 2>nul
+                    if %errorlevel% neq 0 (
+                        echo ⚙️ ZenML missing, reinstalling dependencies...
+                        "%POETRY_EXE%" install
+                    ) else (
+                        echo ✅ ZenML found, skipping install.
+                    )
                 )
                 '''
             }
